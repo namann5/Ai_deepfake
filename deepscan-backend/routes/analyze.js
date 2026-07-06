@@ -1,12 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const fs = require('fs').promises;
+const mongoose = require('mongoose');
 const { upload, uploadVideo, handleMulterError } = require('../middleware/fileValidator');
 const { analyzeMetadata } = require('../services/metadataService');
 const { runMLModel } = require('../services/mlservice');
 const Result = require('../models/Result');
 
 const labelFromScore = (score) => (score >= 50 ? 'deepfake' : 'real');
+
+const dbReady = () => mongoose.connection.readyState === 1;
 
 // --- POST /api/analyze ------------------------------------------------------
 router.post('/analyze', upload.single('image'), async (req, res) => {
@@ -34,20 +37,23 @@ router.post('/analyze', upload.single('image'), async (req, res) => {
       ? Number(mlResult.confidence)
       : Number((modelScore / 100).toFixed(6));
 
-    const savedResult = await Result.create({
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      final_score: modelScore,
-      verdict: prediction === 'deepfake' ? 'SYNTHETIC' : 'REAL',
-      confidence: confidence >= 0.8 ? 'High' : confidence >= 0.6 ? 'Medium' : 'Low',
-      breakdown: {
-        model_score: modelScore,
-        metadata_score: metadataResult.metadata_score,
-      },
-      flags: metadataResult.flags,
-      raw_metadata: metadataResult.raw,
-      description: String(req.body.description || '').slice(0, 1000),
-    });
+    let savedResult = null;
+    if (dbReady()) {
+      savedResult = await Result.create({
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        final_score: modelScore,
+        verdict: prediction === 'deepfake' ? 'SYNTHETIC' : 'REAL',
+        confidence: confidence >= 0.8 ? 'High' : confidence >= 0.6 ? 'Medium' : 'Low',
+        breakdown: {
+          model_score: modelScore,
+          metadata_score: metadataResult.metadata_score,
+        },
+        flags: metadataResult.flags,
+        raw_metadata: metadataResult.raw,
+        description: String(req.body.description || '').slice(0, 1000),
+      });
+    }
 
     fs.unlink(filePath)
       .then(() => console.log('Temp file deleted'))
@@ -65,8 +71,8 @@ router.post('/analyze', upload.single('image'), async (req, res) => {
       },
       raw_metadata: metadataResult.raw,
       flags: metadataResult.flags,
-      id: savedResult._id,
-      analyzed_at: savedResult.analyzed_at,
+      id: savedResult ? savedResult._id : null,
+      analyzed_at: savedResult ? savedResult.analyzed_at : new Date().toISOString(),
       metadata_flags: metadataResult.flags,
     });
   } catch (err) {
@@ -97,20 +103,23 @@ router.post('/analyze-video', uploadVideo.single('video'), async (req, res) => {
     const verdict = prediction === 'deepfake' ? 'SYNTHETIC' : 'REAL';
     const confidenceBand = modelScore >= 80 ? 'High' : modelScore >= 60 ? 'Medium' : 'Low';
 
-    const savedResult = await Result.create({
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      final_score: modelScore,
-      verdict,
-      confidence: confidenceBand,
-      breakdown: {
-        model_score: modelScore,
-        metadata_score: 50,
-      },
-      flags: ['Video metadata check skipped'],
-      raw_metadata: null,
-      description: String(req.body.description || '').slice(0, 1000),
-    });
+    let savedResult = null;
+    if (dbReady()) {
+      savedResult = await Result.create({
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        final_score: modelScore,
+        verdict,
+        confidence: confidenceBand,
+        breakdown: {
+          model_score: modelScore,
+          metadata_score: 50,
+        },
+        flags: ['Video metadata check skipped'],
+        raw_metadata: null,
+        description: String(req.body.description || '').slice(0, 1000),
+      });
+    }
 
     fs.unlink(filePath)
       .then(() => console.log('Temp video file deleted'))
@@ -119,7 +128,7 @@ router.post('/analyze-video', uploadVideo.single('video'), async (req, res) => {
     return res.status(200).json({
       message: 'Video analysis complete',
       prediction,
-      id: savedResult._id,
+      id: savedResult ? savedResult._id : null,
       filename: req.file.filename,
       originalName: req.file.originalname,
       final_score: modelScore,
@@ -131,7 +140,7 @@ router.post('/analyze-video', uploadVideo.single('video'), async (req, res) => {
       },
       flags: ['Video metadata check skipped'],
       raw_metadata: null,
-      analyzed_at: savedResult.analyzed_at,
+      analyzed_at: savedResult ? savedResult.analyzed_at : new Date().toISOString(),
       frames_analyzed: mlResult.frames_analyzed || 0,
       sampled_second: Number.isFinite(mlResult.sampled_second) ? mlResult.sampled_second : null,
       sampled_frame_index: Number.isFinite(mlResult.sampled_frame_index) ? mlResult.sampled_frame_index : null,
