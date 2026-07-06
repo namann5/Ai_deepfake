@@ -1,76 +1,110 @@
 <div align="center">
 
-# DeepScan
-
-**AI-Generated Media Verifier**
-
-Detect deepfakes with a three-layer pipeline — deep learning, metadata forensics, and score aggregation.
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f0c29,50:302b63,100:24243e&height=220&section=header&text=DeepScan&fontSize=80&fontColor=ffffff&fontAlignY=38&desc=AI-Generated%20Media%20Verifier&descAlignY=58&descSize=20&animation=fadeIn" width="100%"/>
 
 <br/>
 
-[![Status](https://img.shields.io/badge/Status-Active-22c55e?style=flat-square)](.)
+[![Status](https://img.shields.io/badge/status-active-22c55e?style=flat-square)](.)
 [![Node](https://img.shields.io/badge/Node.js-18%2B-339933?style=flat-square&logo=node.js&logoColor=white)](.)
 [![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)](.)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](.)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](.)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)](.)
-[![License](https://img.shields.io/badge/License-Academic-8B5CF6?style=flat-square)](.)
+[![License](https://img.shields.io/badge/license-academic-8B5CF6?style=flat-square)](.)
 
 <br/>
 
-**Department of Computer Science & Engineering (CSED) · Section 2FH**
+> **See it. Scan it. Know it.** Upload any image or video — get a verdict in seconds.
+> Powered by Xception deep learning + EXIF metadata forensics.
+
+<br/>
+
+**Department of Computer Science & Engineering · Section 2FH · Academic Project**
 
 </div>
 
 ---
 
-## Quick Start
+## ✦ At a Glance
+
+<div align="center">
+
+| 🧠 **Deep Learning** | 🔎 **Metadata Forensics** | ⚡ **2s Latency** |
+|:---|:---:|:---:|
+| Xception backbone + PyTorch | EXIF camera, GPS, AI-software flags | End-to-end under 3 seconds |
+
+</div>
+
+---
+
+## ✦ Quick Start
 
 ```bash
 git clone https://github.com/namann5/Ai_deepfake.git
 cd Ai_deepfake
 
-# Start everything (Docker required)
+# Docker — one command, all services
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
 
 | Service | URL |
-|---|---|
+|:---|---:|
 | Frontend | `http://localhost:3001` |
 | Backend API | `http://localhost:5000` |
-| ML Service | `http://localhost:7000` |
+| ML Inference | `http://localhost:7000` |
 
 ---
 
-## What It Does
+## ✦ Architecture
 
-Upload an image or video → get a verdict in seconds.
+```
+┌─ Browser ─────────────────────────────┐
+│  React 19 · React Router 7 · Axios     │
+└────────────────┬───────────────────────┘
+                 │  POST /api/analyze
+                 ▼
+┌─ Node.js (Express 5) ─────────────────┐
+│  Multer · Rate Limiter · Helmet · CORS │
+├────────────┬───────────────────────────┤
+│ Metadata   │  ML Client (axios) ───────┼──► FastAPI · PyTorch · Xception
+│ (exifr)    │                           │
+└────────────┴───────────────────────────┘
+        │              │
+        └── Score Aggregator ──► MongoDB
+```
 
-| Layer | What it detects |
+### Services
+
+| Container | Role |
+|:---|---|
+| `deepscan-backend` | Express API — routing, validation, orchestration |
+| `deepscan-ml-service` | FastAPI + PyTorch — Xception deepfake inference |
+| `deepscan-frontend` | React SPA — upload, results, history |
+| `deepscan-mongo` | MongoDB 7 — scan persistence |
+
+---
+
+## ✨ Features
+
+| | |
 |---|---|
-| **Deep Learning** | Xception backbone analyzes pixel-level forgery artifacts |
-| **Metadata Forensics** | EXIF parsing flags missing camera data, AI software signatures |
-| **Score Aggregation** | Fuses both signals into a 0–100% probability score |
+| 🖼️ **Image & Video Upload** | JPEG/PNG/WEBP + MP4/MOV — drag & drop or click |
+| 🤖 **Deep Learning Detection** | Xception backbone → pixel-level forgery analysis |
+| 🔎 **EXIF Forensics** | Camera make/model, GPS, timestamps, AI software signatures |
+| 📊 **Probability Score** | 0–100% with "Synthetic" / "Real" verdict + confidence band |
+| 🗄️ **Scan History** | Every result stored in MongoDB with full breakdown |
+| 🐳 **Dockerized** | `docker compose up` — all four containers, one command |
 
 ---
 
-## Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | React 19 · Axios · React Router 7 |
-| Backend | Node.js · Express 5 · Mongoose |
-| ML Engine | PyTorch · Xception (pytorchcv) · FastAPI |
-| Video Processing | OpenCV · Haar Cascade face detection |
-| Database | MongoDB 7 |
-| Infrastructure | Docker · Docker Compose · Render · Vercel |
-
----
-
-## API
+## ✦ API
 
 ### `POST /api/analyze`
-Upload an image/video for analysis. `multipart/form-data` with field `image`.
+
+```http
+Content-Type: multipart/form-data
+Field: image (file) · Optional: description (string)
+```
 
 ```json
 {
@@ -81,45 +115,54 @@ Upload an image/video for analysis. `multipart/form-data` with field `image`.
   "breakdown": {
     "model_score": 68.0,
     "metadata_score": 85.0
-  }
+  },
+  "flags": ["No EXIF data found — strong synthetic signal"]
 }
 ```
 
 ### `GET /api/results`
-Paginated scan history. Query params: `page`, `limit` (max 100).
+
+```http
+?page=1&limit=20
+```
+
+### `GET /api/results/:id`
 
 ---
 
-## Project Structure
+## ✦ Project Structure
 
 ```
-deepscan-backend/          # Node.js API server
-├── server.js              # Entry point
-├── routes/analyze.js      # Analysis & results endpoints
-├── services/              # ML client, metadata, score aggregation
-├── middleware/             # File validation (multer)
-├── models/Result.js       # Mongoose schema
-└── ml_server/             # Python ML service
-    ├── image_server.py    # PyTorch + Xception inference (primary)
-    └── video_server.py    # TensorFlow video classifier (secondary)
+deepscan-backend/
+├── server.js                    # Express entry point
+├── routes/analyze.js            # Analysis & results endpoints
+├── services/
+│   ├── mlservice.js             # ML inference client (axios)
+│   ├── metadataService.js       # EXIF parsing & scoring
+│   └── scoreAggregator.js       # Score fusion
+├── middleware/fileValidator.js  # Multer upload validation
+├── models/Result.js             # Mongoose schema
+└── ml_server/
+    ├── image_server.py          # 🔵 Primary — PyTorch + Xception
+    └── video_server.py          # 🟡 Secondary — TensorFlow video classifier
 
-deepscan-frontend/         # React app
-├── src/
-│   ├── components/        # Reusable UI components
-│   ├── pages/             # Route pages
-│   └── services/api.js    # API client
+deepscan-frontend/
+└── src/
+    ├── components/              # UploadZone, ResultCard, MetadataPanel, ...
+    ├── pages/                   # Checker, History, About, ...
+    └── services/api.js          # Axios client
 ```
 
 ---
 
-## Team
+## ✦ Team
 
-| Name | Role |
-|---|---|
-| **Anurag Singh** | Backend & System Analysis |
-| **Arpita Raj** | Frontend & UI Design |
-| **Harshita Nagpal** | Frontend & Documentation |
-| **Naman Singh** | Backend & Testing |
+| | Name | Role |
+|---|---|---|
+| 👤 | **Anurag Singh** | Backend & System Analysis |
+| 👤 | **Arpita Raj** | Frontend & UI Design |
+| 👤 | **Harshita Nagpal** | Frontend & Documentation |
+| 👤 | **Naman Singh** | Backend & Testing |
 
 **Supervisor:** Mr. Abhishek Singh · **Submitted To:** Mr. Sanjay Madaan
 
@@ -127,6 +170,10 @@ deepscan-frontend/         # React app
 
 <div align="center">
 
-*Department of Computer Science & Engineering (CSED) · Section 2FH · Academic Project*
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:24243e,50:302b63,100:0f0c29&height=120&section=footer" width="100%"/>
+
+**Fighting synthetic misinformation, one pixel at a time.** 🔍
+
+*Department of Computer Science & Engineering · Section 2FH*
 
 </div>
