@@ -50,13 +50,25 @@ const apiLimiter = rateLimit({
 app.use('/api', apiLimiter);
 
 // ─── MongoDB Connection ────────────────────────────────────────────────────
+let mongoConnected = false;
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB Connected'))
+  .then(() => {
+    mongoConnected = true;
+    console.log('✅ MongoDB Connected');
+  })
   .catch((err) => {
     console.error('❌ MongoDB Connection Error:', err.message);
-    process.exit(1);
+    console.warn('⚠️  Server will run without database — analysis results will not be persisted.');
   });
+
+// Middleware to reject DB-dependent routes when MongoDB is down
+app.use('/api/results', (req, res, next) => {
+  if (!mongoConnected) {
+    return res.status(503).json({ error: 'Database unavailable. Results cannot be retrieved.' });
+  }
+  next();
+});
 
 // ─── Routes ────────────────────────────────────────────────────────────────
 const analyzeRoute = require('./routes/analyze');
