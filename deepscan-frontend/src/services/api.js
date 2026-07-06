@@ -3,6 +3,13 @@ import axios from 'axios';
 // Use relative roads in production so Vercel rewrites work automatically
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 
+export async function fetchResults(page = 1, limit = 20) {
+  const response = await axios.get(`${API_BASE_URL}/api/results`, {
+    params: { page, limit }
+  });
+  return response.data;
+}
+
 export async function analyzeImage(file, description = '') {
   const formData = new FormData();
   formData.append('image', file);

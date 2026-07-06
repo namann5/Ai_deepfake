@@ -131,7 +131,9 @@ def interpret_prediction(raw_output: np.ndarray) -> dict:
 
     deepfake_prob = positive_prob if POSITIVE_CLASS == "deepfake" else (1.0 - positive_prob)
     deepfake_prob = float(np.clip(deepfake_prob, 0.0, 1.0))
-    
+
+    prediction = "deepfake" if deepfake_prob >= DEEPFAKE_THRESHOLD else "real"
+
     # Calibration for emphatic results (85-97% for detections)
     if prediction == "deepfake":
         conf = 0.85 + (deepfake_prob - DEEPFAKE_THRESHOLD) * (0.12 / (1.0 - DEEPFAKE_THRESHOLD + 1e-9))

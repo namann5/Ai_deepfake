@@ -43,8 +43,8 @@ const runImageModel = async (filePath) => {
       {
         headers: form.getHeaders(),
         timeout: IMAGE_PREDICT_TIMEOUT_MS,
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
+        maxContentLength: 50 * 1024 * 1024,
+        maxBodyLength: 50 * 1024 * 1024,
       }
     );
 
@@ -78,8 +78,8 @@ const runVideoModel = async (filePath) => {
       {
         headers: form.getHeaders(),
         timeout: VIDEO_PREDICT_TIMEOUT_MS,
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
+        maxContentLength: 50 * 1024 * 1024,
+        maxBodyLength: 50 * 1024 * 1024,
       }
     );
 

@@ -48,13 +48,13 @@ const videoFileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50 MB (videos need more room)
+  limits: { fileSize: parseInt(process.env.UPLOAD_LIMIT, 10) || 50 * 1024 * 1024 }
 });
 
 const uploadVideo = multer({
   storage,
   fileFilter: videoFileFilter,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50 MB
+  limits: { fileSize: parseInt(process.env.UPLOAD_LIMIT, 10) || 50 * 1024 * 1024 }
 });
 
 // ─── Shared Multer Error Handler ───────────────────────────────────────────
@@ -62,7 +62,8 @@ const uploadVideo = multer({
 const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'File too large. Maximum size is 5 MB.' });
+      const maxMB = Math.round(((parseInt(process.env.UPLOAD_LIMIT, 10) || 50 * 1024 * 1024) / 1024 / 1024) * 10) / 10;
+      return res.status(400).json({ error: `File too large. Maximum size is ${maxMB} MB.` });
     }
     return res.status(400).json({ error: `Upload error: ${err.message}` });
   }
